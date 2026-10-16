@@ -1,9 +1,10 @@
+
 """API de eventos usada em todas as etapas do projeto."""
 
 from datetime import date
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 
 class EventInput(BaseModel):
@@ -11,7 +12,15 @@ class EventInput(BaseModel):
 
     title: str
     date: date
-    capacity: int
+    capacity: int = Field(gt=0)
+
+    @field_validator("title")
+    @classmethod
+    def title_must_not_be_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("O título não pode ser vazio")
+        return value
 
 
 def create_app() -> FastAPI:
@@ -27,15 +36,25 @@ def create_app() -> FastAPI:
     def get_event(event_id: int):
         event = events.get(event_id)
         if event is None:
-            raise HTTPException(status_code=404, detail="Evento não encontrado")
+            raise HTTPException(
+                status_code=404,
+                detail="Evento não encontrado",
+            )
         return event
 
     @app.post("/events", status_code=201)
     def create_event(data: EventInput):
-        # Atividade 1: valide título e capacidade, gere um ID e guarde o
-        # evento em `events`. A resposta deve conter id, title, date e capacity.
-        # Os testes mostram os casos de sucesso e de entrada inválida.
-        raise HTTPException(status_code=501, detail="Cadastro ainda não implementado")
+        event_id = max(events, default=0) + 1
+
+        event = {
+            "id": event_id,
+            "title": data.title,
+            "date": data.date.isoformat(),
+            "capacity": data.capacity,
+        }
+
+        events[event_id] = event
+        return event
 
     return app
 
